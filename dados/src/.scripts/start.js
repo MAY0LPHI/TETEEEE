@@ -3,21 +3,14 @@ import handleMessage from '../index.js';
 import fs from 'fs';
 import path from 'path';
 import { paths } from '../utils/paths.js';
+import * as colorLogger from '../utils/colorLogger.js';
 
 /**
  * Script de inicialização do Hinokami Bot 🗡️🔥
  * Inicia conexão e processamento de mensagens
  */
 
-console.log(`
-╔════════════════════════════════════════╗
-║                                        ║
-║     🗡️  HINOKAMI BOT - TANJIRO  🔥     ║
-║                                        ║
-║   Respiração do Sol - Forma Inicial    ║
-║                                        ║
-╚════════════════════════════════════════╝
-`);
+colorLogger.logBanner();
 
 // Verificar se Node.js >= 20
 const nodeVersion = process.versions.node.split('.')[0];
@@ -39,6 +32,7 @@ const requiredDirs = [
 for (const dir of requiredDirs) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+    colorLogger.logSuccess('Sistema', `Diretório criado: ${path.basename(dir)}`);
     logger.info(`✅ Diretório criado: ${dir}`);
   }
 }
@@ -46,7 +40,7 @@ for (const dir of requiredDirs) {
 // Verificar arquivo de configuração
 const configPath = paths.config;
 if (!fs.existsSync(configPath)) {
-  console.error('❌ Arquivo config.json não encontrado!');
+  colorLogger.logError('Sistema', new Error('Arquivo config.json não encontrado!'));
   console.error('   Execute: npm run config:install');
   process.exit(1);
 }
@@ -56,58 +50,64 @@ let config;
 try {
   const configData = fs.readFileSync(configPath, 'utf-8');
   config = JSON.parse(configData);
+  colorLogger.logSuccess('Sistema', 'Configuração carregada');
   logger.info('✅ Configuração carregada');
 } catch (error) {
+  colorLogger.logError('Sistema', error);
   console.error('❌ Erro ao carregar config.json:', error.message);
   process.exit(1);
 }
 
 // Verificar se número do dono está configurado
 if (!config.ownerNumber || config.ownerNumber.includes('XXX')) {
-  console.warn('\n⚠️  ATENÇÃO: Configure o número do dono do bot!');
+  colorLogger.logWarning('Configuração', 'Configure o número do dono do bot!');
   console.warn('   Edite: dados/src/config.json');
   console.warn('   Campo: ownerNumber\n');
 }
 
 // Verificar sessão
 if (!hasSession()) {
-  console.log('\n📱 Primeira execução detectada!');
-  console.log('   Prepare-se para escanear o QR Code...\n');
+  colorLogger.logInfo('Primeira Execução', 'Prepare-se para escanear o QR Code...');
 }
 
 // Handlers de processo
 process.on('uncaughtException', (err) => {
+  colorLogger.logError('Exceção Não Capturada', err);
   logger.error('Exceção não capturada:', err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
+  colorLogger.logError('Promise Rejeitada', new Error(String(reason)));
   logger.error('Promise rejeitada não tratada:', reason);
 });
 
 process.on('SIGINT', () => {
-  console.log('\n\n🛑 Encerrando Hinokami Bot...');
+  colorLogger.logWarning('Sistema', 'Encerrando Hinokami Bot...');
   console.log('   Até breve, guerreiro! 🗡️\n');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n\n🛑 Encerrando Hinokami Bot (SIGTERM)...');
+  colorLogger.logWarning('Sistema', 'Encerrando Hinokami Bot (SIGTERM)...');
   process.exit(0);
 });
 
 // Iniciar bot
 async function start() {
   try {
+    colorLogger.logInfo('Sistema', 'Iniciando Hinokami Bot...');
     logger.info('🔥 Iniciando Hinokami Bot...');
     
     const sock = await connectToWhatsApp(handleMessage);
     
+    colorLogger.logSuccess('Sistema', 'Bot inicializado com sucesso!');
     logger.info('✅ Bot inicializado com sucesso!');
     
     // Keep process alive - the bot will run continuously
     // Heartbeat could be added here for monitoring if needed
     
   } catch (error) {
+    colorLogger.logError('Inicialização', error);
     logger.error('❌ Erro fatal ao iniciar bot:', error);
     console.error('\n💥 Falha ao iniciar o bot!');
     console.error('   Erro:', error.message);

@@ -40,3 +40,7 @@ build/
 # Media uploads (except placeholder)
 dados/midias/*
 !dados/midias/menu.jpg
+
+# Test and demo files
+test-*.js
+demo-*.txt

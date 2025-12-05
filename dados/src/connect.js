@@ -13,6 +13,7 @@ import qrcode from 'qrcode-terminal';
 import fs from 'fs';
 import path from 'path';
 import { paths } from './utils/paths.js';
+import * as colorLogger from './utils/colorLogger.js';
 // Import JSON config using 'with' syntax (Node.js 20+ feature)
 // See: https://nodejs.org/api/esm.html#import-attributes
 import config from './config.json' with { type: 'json' };
@@ -95,7 +96,8 @@ export async function connectToWhatsApp(messageHandler) {
 
         // Mostrar QR Code se disponível
         if (qr) {
-          console.log('\n🗡️ HINOKAMI BOT - Escaneie o QR Code abaixo 🔥\n');
+          colorLogger.logConnection('qr', 'Escaneie o QR Code abaixo para conectar');
+          console.log('');
           qrcode.generate(qr, { small: true });
           console.log('\nOu use o método de pareamento (pair code) se preferir.\n');
         }
@@ -103,8 +105,9 @@ export async function connectToWhatsApp(messageHandler) {
         // Conexão estabelecida
         if (connection === 'open') {
           retryCount = 0;
+          colorLogger.logConnection('success', 'Bot conectado com sucesso! Respiração do Sol ativada!');
+          colorLogger.logSeparator();
           logger.info('🔥 Hinokami Bot conectado com sucesso!');
-          console.log('\n✨ Respiração do Sol ativada! O bot está online! ⚔️\n');
         }
 
         // Desconectado
@@ -114,23 +117,28 @@ export async function connectToWhatsApp(messageHandler) {
             : true;
 
           const reason = lastDisconnect?.error?.output?.statusCode;
+          colorLogger.logConnection('disconnected', `Conexão fechada. Razão: ${reason}`);
           logger.warn(`Conexão fechada. Razão: ${reason}. Reconectar: ${shouldReconnect}`);
 
           if (shouldReconnect && retryCount < maxRetries) {
             retryCount++;
             const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), 60000);
             
+            colorLogger.logConnection('connecting', `Reconectando... Tentativa ${retryCount}/${maxRetries} em ${delay}ms`);
             logger.info(`Tentativa de reconexão ${retryCount}/${maxRetries} em ${delay}ms...`);
             
             setTimeout(() => {
               startConnection().catch(err => {
+                colorLogger.logError('Reconexão', err);
                 logger.error('Erro na reconexão:', err);
               });
             }, delay);
           } else if (retryCount >= maxRetries) {
+            colorLogger.logError('Conexão', new Error('Número máximo de tentativas de reconexão atingido'));
             logger.error('❌ Número máximo de tentativas de reconexão atingido.');
             process.exit(1);
           } else {
+            colorLogger.logConnection('disconnected', 'Bot desconectado (logout). Finalizando...');
             logger.info('🚪 Bot desconectado (logout). Finalizando...');
             process.exit(0);
           }
@@ -151,6 +159,7 @@ export async function connectToWhatsApp(messageHandler) {
               await messageHandler(sock, message);
             }
           } catch (error) {
+            colorLogger.logError('Processamento de Mensagem', error);
             logger.error('Erro ao processar mensagem:', error);
           }
         });
