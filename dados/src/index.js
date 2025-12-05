@@ -13,6 +13,7 @@ import { groupDB, userDB, configDB } from './utils/database.js';
 import config from './config.json' with { type: 'json' };
 import * as menus from './menus/index.js';
 import { commandHandler } from './funcs/exports.js';
+import * as colorLogger from './utils/colorLogger.js';
 
 /**
  * Processador principal de mensagens do Hinokami Bot 🗡️🔥
@@ -56,6 +57,11 @@ export async function handleMessage(sock, m) {
 
     body = sanitizeText(body);
     
+    // Log mensagem normal (não comando)
+    if (body && !body.startsWith(config.prefix || '!')) {
+      colorLogger.logMessage(senderNumber, isGroupMsg, body);
+    }
+    
     // Salvar mensagem no cache anti-delete
     if (config.features?.antiDelete && m.key.id) {
       antiDeleteCache.saveMessage(m.key.id, {
@@ -91,6 +97,7 @@ export async function handleMessage(sock, m) {
 
     // Verificar blacklist global
     if (configDB.isBlacklisted(sender)) {
+      colorLogger.logBlacklist(senderNumber, commandName);
       logger.warn(`Usuário na blacklist tentou usar comando: ${senderNumber}`);
       return;
     }
@@ -98,6 +105,7 @@ export async function handleMessage(sock, m) {
     // Rate limiting
     if (!rateLimiter.check(sender)) {
       const remainingTime = Math.ceil(rateLimiter.getRemainingTime(sender) / 1000);
+      colorLogger.logRateLimit(senderNumber, remainingTime);
       await sendMessage(sock, from, 
         `⚠️ Você está enviando comandos muito rápido!\n\n` +
         `🕐 Aguarde ${remainingTime}s e tente novamente.\n\n` +
@@ -109,6 +117,7 @@ export async function handleMessage(sock, m) {
     // Verificar cooldown por usuário/comando
     if (userDB.checkCooldown(sender, commandName)) {
       const cooldownTime = Math.ceil(userDB.getCooldownTime(sender, commandName) / 1000);
+      colorLogger.logCooldown(senderNumber, commandName, cooldownTime);
       await sendMessage(sock, from,
         `⏳ Cooldown ativo para este comando!\n\n` +
         `🕐 Aguarde ${cooldownTime}s.`
@@ -164,6 +173,7 @@ export async function handleMessage(sock, m) {
     };
 
     // Log do comando
+    colorLogger.logCommand(commandName, senderNumber, isGroupMsg);
     logger.info(`Comando: ${commandName} | De: ${senderNumber} | Grupo: ${isGroupMsg}`);
 
     // Processar comando
@@ -198,6 +208,7 @@ export async function handleMessage(sock, m) {
     }
 
   } catch (error) {
+    colorLogger.logError('Handler de Mensagem', error);
     logger.error('Erro no handler de mensagem:', error);
     
     // Enviar mensagem de erro se possível
